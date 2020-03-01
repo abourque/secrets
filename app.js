@@ -7,10 +7,15 @@ const mongoose = require("mongoose");
 const mongoSanitize = require('express-mongo-sanitize');
 const xssClean = require("xss-clean");
 const encrypt = require("mongoose-encryption");
+const bcrypt = require("bcrypt");
 
+const saltRounds = 10;
+const myPlaintextPassword=123456;
 const app = express();
+
 app.use(mongoSanitize({replaceWith:'_'}));
-mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true, useUnifiedTopology: true}, function(err){
+
+mongoose.connect(newFunction(), {useNewUrlParser: true, useUnifiedTopology: true}, function(err){
     if (err){
         console.log(err);
     }else{
@@ -42,32 +47,53 @@ app.get("/login", function(req,res){
     res.render("login");
 });
 
-app.post("/register", function(req,res){
+app.post("/register", function(req, res){
     const userName = req.body.username;
     const password = req.body.password;
-    User.create({password: password, email: userName});
-    res.render("secrets");
+    bcrypt.hash(password, saltRounds, function(err, hash) {
+        User.create({password: hash, email: userName});
+        res.render("secrets");
+    });
+    
 });
 
 app.post("/login", function(req, res){
     const userName = req.body.username;
     const password = req.body.password;
-    User.findOne({"email":userName}, function(err, user){
-        console.log(user);
-        if (user){
-                if (password === user.password){
-                res.render("secrets");
+    
+        User.findOne({"email": userName}, function(err, user){
+            bcrypt.compare(password, user.password, function(err, result) {
+                if (result == true){
+                  res.render("secrets");
                 }else{
-                console.log("please enter a valid username and password");
-                res.redirect("/login");
+                  res.redirect("login");
                 }
-        }else{
-            console.log("please enter a valid username");
-            res.redirect("login");
-        }
-    })
+            });
+        });
 });
+
+    
+//     User.findOne({"email":userName}, function(err, user){
+//         console.log(user);
+//         if (user){
+//                 if (password === user.password){
+//                 res.render("secrets");
+//                 }else{
+//                 console.log("please enter a valid username and password");
+//                 res.redirect("/login");
+//                 }
+//         }else{
+//             console.log("please enter a valid username");
+//             res.redirect("login");
+//         }
+//     })
+// });
 
 app.listen(3000, function(){
     console.log("listening on 3000");
 });
+
+function newFunction() {
+    return "mongodb://localhost:27017/userDB";
+}
+
